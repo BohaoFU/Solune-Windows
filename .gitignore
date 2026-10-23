@@ -31,3 +31,9 @@ Thumbs.db
 
 # Hosting/account-specific metadata
 **/.openai/
+
+.cache/
+release/
+.test-data*/
+native/bin/
+test-results/

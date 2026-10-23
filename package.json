@@ -1,0 +1,7 @@
+{
+  "name":"solune-windows","productName":"Solune","version":"0.1.0",
+  "description":"岁时万年历 · Windows 农历日历与任务栏面板","author":"BohaoFU","private":true,"main":"src/main.cjs",
+  "scripts":{"start":"electron .","build:native":"node scripts/build-native.cjs","test":"node --test tests/*.test.cjs","test:app":"node tests/app-smoke.cjs","dist":"npm run build:native && electron-builder --win nsis portable --x64 --publish never","pack":"npm run build:native && electron-builder --win --dir --x64 --publish never"},
+  "build":{"appId":"cn.suishi.calendar.windows","productName":"Solune","asar":true,"directories":{"output":"release","buildResources":"assets"},"files":["src/**","renderer/**","assets/icon.ico","package.json"],"extraResources":[{"from":"native/bin/ClockBridge.exe","to":"native/ClockBridge.exe"}],"win":{"icon":"assets/icon.ico","target":["nsis","portable"],"signAndEditExecutable":false},"nsis":{"oneClick":false,"perMachine":false,"allowToChangeInstallationDirectory":true,"createDesktopShortcut":true,"shortcutName":"岁时万年历","artifactName":"Solune-${version}-Setup-${arch}.${ext}"},"portable":{"artifactName":"Solune-${version}-Portable-${arch}.${ext}"}},
+  "devDependencies":{"electron":"45.0.0","electron-builder":"26.15.3","playwright":"1.58.2"}
+}

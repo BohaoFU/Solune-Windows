@@ -1,22 +1,24 @@
-# Solune Windows · 岁时万年历
+# Solune Windows
 
 [简体中文](README.md) | **English**
 
-[Project hub](https://github.com/BohaoFU/Solune) · [Android](https://github.com/BohaoFU/Solune-Android) · [Web](https://github.com/BohaoFU/Solune-Web)
+Windows 10/11 x64 desktop lunar calendar, reusing the local assets from [Solune-Web](https://github.com/BohaoFU/Solune-Web). Includes Gregorian/lunar month views, leap-month conversion, solar terms, festivals, local notes, a tray flyout, JSON backup/merge import, and optional native clock-click routing.
 
-**Status: planned. This repository currently contains project documentation only. There is no Windows client source, runnable desktop project or installer yet.**
+Click the tray icon or press **Ctrl+Alt+D** to toggle the panel. Closing the main window keeps the app in the tray; choose Exit from the tray menu to quit. Clock routing only runs while Solune is running, never changes Windows files or registry settings, and falls back to the tray when a clock cannot be identified. Windows notification center remains available via Win+N. Startup is opt-in.
 
-This is the independent Windows desktop repository. Its future source, build entry point, versions and releases will be maintained here without relying on the directory structure of the Android or Web repositories.
+All calendar assets are bundled. No Google fonts, remote scripts, accounts, advertisements or telemetry are loaded. Dates use Asia/Shanghai, with a Gregorian range of 1901–2100. Festival markers are not official public-holiday or makeup-workday schedules. Local notes survive restarts and app updates; export JSON before migrating to another computer.
 
-## Planned scope
+On Windows x64 with Node.js 24+ and the .NET Framework compiler:
 
-- Lunar month calendar, date lookup, solar terms and traditional festivals.
-- Date notes with local persistence.
-- Public holiday data updates and offline caching.
-- Windows desktop integration, packaging and upgrades.
+```powershell
+npm ci
+npm run build:native
+npm start
+npm test
+npm run test:app
+npm run dist
+```
 
-A desktop framework has not been selected, so no build or run commands are available. These are planned features, not implemented capabilities.
+Unsigned per-user NSIS and portable executable packages are produced in `release/`. The native helper source is included and compiled locally. No Explorer injection or administrator access is required. Clock integration must be checked on the target Windows/taskbar version; it is not a documented Windows plug-in interface.
 
-## License
-
-The main project does not yet specify an open-source license. Licenses for third-party code will be retained here when dependencies are introduced.
+Renderer assets originate from Solune-Web commit `3a0041a6786738e1c542e99411dd4f0ab2c13fc8`. The lunar-javascript MIT license is retained under `renderer/vendor/`. No license has been selected for the main project.
