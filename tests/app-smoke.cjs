@@ -12,7 +12,7 @@ async function launch(){return electron.launch({args:[root,'--smoke-test'],env:{
  assert.equal(await main.locator('.day-cell').count(),42);
  await main.evaluate(()=>selectDate('2026-02-17',true));assert.match(await main.locator('#day-detail').innerText(),/正月初一/);
  await main.locator('[data-view="convert"]').click();await main.locator('#solar-date').fill('2023-03-22');await main.locator('#convert-form button[type="submit"]').click();assert.match(await main.locator('#convert-result').innerText(),/闰二月初一/);
- await main.locator('[data-view="calendar"]').click();await main.locator('#add-day-note').click();await main.locator('#note-title').fill('Windows 版离线验证');await main.locator('#note-body').fill('<script>这是文字，不是脚本</script>');await main.locator('#note-form button[type="submit"]').click();await main.waitForSelector('#note-dialog:not([open])');
+ await main.locator('[data-view="calendar"]').click();await main.locator('#add-day-note').click();await main.locator('#note-title').fill('Windows 版离线验证');await main.locator('#note-body').fill('<script>这是文字，不是脚本</script>');await main.locator('#note-form button[type="submit"]').click();await main.locator('#note-dialog').waitFor({state:'hidden'});
  const saved=await main.evaluate(()=>JSON.parse(localStorage.getItem('suishi-notes')));assert.ok(saved.some(n=>n.title==='Windows 版离线验证'));
  let panel=app.windows().find(p=>p.url().includes('panel=1'));assert.ok(panel);await panel.waitForSelector('body.flyout');
  assert.equal(await panel.evaluate(()=>JSON.parse(localStorage.getItem('suishi-notes')).some(n=>n.title==='Windows 版离线验证')),true);
