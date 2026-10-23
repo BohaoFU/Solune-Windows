@@ -18,7 +18,7 @@ function rebuildMenu(){if(!tray)return;tray.setContextMenu(Menu.buildFromTemplat
 ]));}
 function updateStatus(value){status=value;for(const w of [main,panel])if(w&&!w.isDestroyed())w.webContents.send('desktop:status',status);rebuildMenu();}
 function secureWindow(w){
- w.webContents.on('will-navigate',(e,url)=>{if(!url.startsWith(pageUrl))e.preventDefault();});
+ w.webContents.on('will-navigate',(e,url)=>{if(url.split(/[?#]/,1)[0]!==pageUrl)e.preventDefault();});
  w.webContents.setWindowOpenHandler(({url})=>{
   if(['https://github.com/6tail/lunar-javascript','https://github.com/BohaoFU/Solune-Windows'].includes(url))shell.openExternal(url);
   else if(url===pathToFileURL(path.join(root,'renderer/vendor/LICENSE-lunar.txt')).href)dialog.showMessageBox(w,{title:'lunar-javascript · MIT',message:fs.readFileSync(path.join(root,'renderer/vendor/LICENSE-lunar.txt'),'utf8')});
@@ -91,3 +91,4 @@ if(!app.requestSingleInstanceLock())app.quit();else{
  app.on('activate',()=>showMain());app.on('window-all-closed',()=>{});
  app.on('before-quit',()=>{quitting=true;stopBridge();globalShortcut.unregisterAll();tray?.destroy();});
 }
+

@@ -39,8 +39,9 @@ internal static class ClockBridge {
  private static void Emit(string text){lock(outputLock){try{Console.WriteLine(text);Console.Out.Flush();}catch{Environment.Exit(0);}}}
  internal static bool IsClock(string id,string cls,string name,bool button){
   bool exact=id=="ClockButton"||id=="SystemTrayClock"||id=="TrayClock"||cls=="TrayClockWClass"||cls.IndexOf("DateTimeIconContent",StringComparison.OrdinalIgnoreCase)>=0||cls.IndexOf("ClockButton",StringComparison.OrdinalIgnoreCase)>=0;
-  bool tray=(id=="SystemTrayIcon"||cls.StartsWith("SystemTray.",StringComparison.Ordinal));
-  bool named=button&&tray&&(name=="Clock"||name.IndexOf("时钟",StringComparison.Ordinal)>=0||Regex.IsMatch(name,@"\d{1,2}[:：]\d{2}"));
+  bool tray=(id=="SystemTrayIcon"&&cls=="SystemTray.NormalButton");
+  bool hasDate=Regex.IsMatch(name,@"\d{1,4}[/\.年-]\d{1,2}")||name.IndexOf("星期",StringComparison.Ordinal)>=0;
+  bool named=button&&tray&&(name=="Clock"||name.IndexOf("时钟",StringComparison.Ordinal)>=0||(hasDate&&Regex.IsMatch(name,@"\d{1,2}[:：]\d{2}")));
   return exact||named;
  }
  private static void Add(List<Region> list,Rect r){
@@ -92,4 +93,5 @@ internal static class ClockBridge {
   try{Application.Run();}finally{UnhookWindowsHookEx(hook);}GC.KeepAlive(callback);return 0;
  }
 }
+
 

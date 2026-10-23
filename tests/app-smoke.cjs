@@ -19,9 +19,11 @@ async function launch(){return electron.launch({args:[root,'--smoke-test'],env:{
  await app.evaluate(({BrowserWindow})=>{const p=BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().includes('panel=1'));p.show();});
  await panel.evaluate(()=>selectDate('2026-02-17',true));await panel.screenshot({path:path.join(screenshotDir,'Solune-panel.png')});
  await panel.locator('#open-full-app').click();await main.locator('#desktop-settings-button').click();await main.locator('#replace-clock').uncheck();assert.equal((await main.evaluate(()=>soluneDesktop.getSettings())).replaceClock,false);await main.locator('#close-desktop-settings').click();
+ await main.locator('#desktop-settings-open').click();await main.locator('#desktop-settings').waitFor({state:'visible'});assert.equal(await main.locator('dialog[open]').count(),1);await main.locator('#close-desktop-settings').click();
  await main.locator('#theme-btn').click();await main.screenshot({path:path.join(screenshotDir,'Solune-app-dark.png')});await main.locator('#theme-btn').click();await main.screenshot({path:path.join(screenshotDir,'Solune-app.png')});
  assert.equal(await main.evaluate(async()=>{try{await fetch('https://example.com');return false;}catch{return true;}}),true);
  assert.deepEqual(errors,[]);await app.close();app=null;
  app=await launch();main=await app.firstWindow();await main.waitForSelector('.day-cell.selected');assert.ok(await main.evaluate(()=>JSON.parse(localStorage.getItem('suishi-notes')).some(n=>n.title==='Windows 版离线验证')));assert.equal((await main.evaluate(()=>soluneDesktop.getSettings())).replaceClock,false);
  console.log('PASS: lunar calendar, leap month conversion, notes persistence and cross-window sync, desktop settings persistence, sandbox isolation, offline network policy, screenshots.');
  }finally{if(app)await app.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
+

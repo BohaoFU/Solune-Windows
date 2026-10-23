@@ -1,7 +1,7 @@
 name: Windows build
 on:
   push:
-    branches: [main, 'feat/**']
+    branches: [main]
     tags: ['v*']
   pull_request:
   workflow_dispatch:
@@ -25,3 +25,9 @@ jobs:
         with:
           name: Solune-Windows-x64
           path: release/*.exe
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Solune-Windows-preview
+          path: test-results/*.png
+          if-no-files-found: ignore
