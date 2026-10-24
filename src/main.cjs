@@ -3,17 +3,19 @@ const {app,BrowserWindow,Menu,Tray,nativeImage,ipcMain,screen,globalShortcut,ses
 const fs=require('node:fs'),path=require('node:path'),{pathToFileURL}=require('node:url'),{spawn}=require('node:child_process'),readline=require('node:readline');
 const {panelBounds}=require('./panel-position.cjs');
 const root=path.resolve(__dirname,'..'),html=path.join(root,'renderer/index.html'),pageUrl=pathToFileURL(html).href;
-const testing=process.argv.includes('--smoke-test');
+const clockTesting=process.argv.includes('--clock-test');
+const testing=process.argv.includes('--smoke-test')||clockTesting;
 if(testing)app.setPath('userData',path.resolve(process.env.SOLUNE_TEST_DATA||path.join(root,'.test-data')));
 let main,panel,tray,bridge,quitting=false,status='正在识别系统时钟…',settingsPath,lastToggle=0;
 let preferences={replaceClock:true};
-function getSettings(){return {...preferences,startup:app.getLoginItemSettings().openAtLogin,status,shortcut:'Ctrl+Alt+D'};}
+function startupCommand(){return {path:process.env.PORTABLE_EXECUTABLE_FILE||app.getPath('exe'),args:['--background']};}
+function getSettings(){return {...preferences,startup:app.getLoginItemSettings(startupCommand()).openAtLogin,status,shortcut:'Ctrl+Alt+D'};}
 function rebuildMenu(){if(!tray)return;tray.setContextMenu(Menu.buildFromTemplate([
  {label:'打开岁时万年历',click:()=>showMain()},
  {label:'农历小面板 · Ctrl+Alt+D',click:()=>togglePanel(null,true)},
  {type:'separator'},{label:status,enabled:false},
  {label:'接管系统时间的左键点击',type:'checkbox',checked:preferences.replaceClock,click:item=>changeSetting('replaceClock',item.checked)},
- {label:'开机启动',type:'checkbox',checked:app.getLoginItemSettings().openAtLogin,click:item=>changeSetting('startup',item.checked)},
+ {label:'开机启动',type:'checkbox',checked:app.getLoginItemSettings(startupCommand()).openAtLogin,click:item=>changeSetting('startup',item.checked)},
  {type:'separator'},{label:'退出（恢复系统日历点击）',click:()=>{quitting=true;app.quit();}}
 ]));}
 function updateStatus(value){status=value;for(const w of [main,panel])if(w&&!w.isDestroyed())w.webContents.send('desktop:status',status);rebuildMenu();}
@@ -59,9 +61,9 @@ function startBridge(){
 function changeSetting(key,value){
  if(typeof value!=='boolean'||!['replaceClock','startup'].includes(key))throw Error('设置无效');
  if(key==='startup'){
-  if(!testing)app.setLoginItemSettings({openAtLogin:value,path:process.env.PORTABLE_EXECUTABLE_FILE||app.getPath('exe'),args:['--background']});
+  if(!testing)app.setLoginItemSettings({...startupCommand(),openAtLogin:value});
  }else{
-  preferences.replaceClock=value;fs.mkdirSync(path.dirname(settingsPath),{recursive:true});fs.writeFileSync(settingsPath+'.tmp',JSON.stringify(preferences));fs.renameSync(settingsPath+'.tmp',settingsPath);if(!testing)startBridge();
+  preferences.replaceClock=value;fs.mkdirSync(path.dirname(settingsPath),{recursive:true});fs.writeFileSync(settingsPath+'.tmp',JSON.stringify(preferences));fs.renameSync(settingsPath+'.tmp',settingsPath);if(!testing||clockTesting)startBridge();
  }
  rebuildMenu();return getSettings();
 }
@@ -84,11 +86,10 @@ if(!app.requestSingleInstanceLock())app.quit();else{
   session.defaultSession.setPermissionRequestHandler((_w,_p,cb)=>cb(false));
   session.defaultSession.webRequest.onBeforeRequest((d,cb)=>cb({cancel:!['file:','data:','devtools:'].some(p=>d.url.startsWith(p))}));
   Menu.setApplicationMenu(null);main=createWindow();panel=createWindow(true);tray=new Tray(nativeImage.createFromPath(path.join(root,'assets/icon.ico')));tray.setToolTip('岁时万年历 · 点击查看农历');tray.on('click',()=>togglePanel());handlers();rebuildMenu();
-  if(testing)updateStatus('测试模式 · 未接管系统时钟');else startBridge();
+  if(testing&&!clockTesting)updateStatus('测试模式 · 未接管系统时钟');else startBridge();
   globalShortcut.register('CommandOrControl+Alt+D',()=>togglePanel());
   main.once('ready-to-show',()=>{if(!process.argv.includes('--background'))showMain();});
  }).catch(e=>{console.error(e);app.exit(1);});
  app.on('activate',()=>showMain());app.on('window-all-closed',()=>{});
  app.on('before-quit',()=>{quitting=true;stopBridge();globalShortcut.unregisterAll();tray?.destroy();});
 }
-

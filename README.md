@@ -19,7 +19,7 @@ Windows 10/11 x64 桌面客户端。复用 Solune-Web 的离线历法、界面�
 
 ## 本机数据和离线行为
 
-记事保存在 Electron 的本机应用数据目录（通常 `%APPDATA%/solune-windows/Local Storage`），不是浏览器网站的数据目录。主窗口与小面板共享记事。应用升级保留同一目录；移到其他电脑需导出/导入 JSON 备份，导入时保留本机已有的同 ID 记事。
+记事保存在 Electron 的本机应用数据目录，不是浏览器网站的数据目录。主窗口与小面板共享记事。应用升级保留同一目录；移到其他电脑需导出/导入 JSON 备份，导入时保留本机已有的同 ID 记事。
 
 日历与农历算法全部打包在本地。Windows 版移除了 Web 的 Google 字体导入和 PWA Service Worker 注册，使用系统字体；渲染进程拒绝网络连接。无广告、资讯推荐、账号或遥测。
 
@@ -35,6 +35,7 @@ npm run build:native
 npm start
 npm test
 npm run test:app
+npm run test:clock # 在有任务栏的交互桌面上测试
 npm run dist
 ```
 

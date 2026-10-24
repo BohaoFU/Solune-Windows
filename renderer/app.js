@@ -221,5 +221,3 @@ $('#calendar-grid').addEventListener('keydown',e=>{
 document.addEventListener('keydown',e=>{if(!['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)&&!$('dialog[open]')){if(e.key==='PageUp'){e.preventDefault();changeMonth(-1);}if(e.key==='PageDown'){e.preventDefault();changeMonth(1);}}});
 window.addEventListener('hashchange',()=>setView(location.hash.slice(1)));
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;});
-
-

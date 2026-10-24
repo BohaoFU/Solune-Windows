@@ -10,4 +10,3 @@ body.dark{--bg:#232720;--paper:#2b3027;--side:#262c23;--ink:#e2e4d8;--muted:#9da
 .day-cell.selected .lunar-label{color:#fff9f1}
 .day-cell{padding:4px 1px}
 .brand small{white-space:nowrap}
-

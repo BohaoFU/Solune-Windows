@@ -32,6 +32,7 @@ internal static class ClockBridge {
  private static volatile Region[] regions=new Region[0];
  private static long observedAt;
  private static bool swallowedDown;
+ private static bool diagnostics;
  private static IntPtr hook;
  private static HookDelegate callback=OnMouse;
  private static readonly object outputLock=new object();
@@ -39,9 +40,10 @@ internal static class ClockBridge {
  private static void Emit(string text){lock(outputLock){try{Console.WriteLine(text);Console.Out.Flush();}catch{Environment.Exit(0);}}}
  internal static bool IsClock(string id,string cls,string name,bool button){
   bool exact=id=="ClockButton"||id=="SystemTrayClock"||id=="TrayClock"||cls=="TrayClockWClass"||cls.IndexOf("DateTimeIconContent",StringComparison.OrdinalIgnoreCase)>=0||cls.IndexOf("ClockButton",StringComparison.OrdinalIgnoreCase)>=0;
-  bool tray=(id=="SystemTrayIcon"&&cls=="SystemTray.NormalButton");
+  name=Regex.Replace(name,@"[\u200e\u200f\u202a-\u202e\u2066-\u2069]","");
+  bool tray=(id=="SystemTrayIcon"&&(cls=="SystemTray.NormalButton"||cls=="SystemTray.OmniButton"));
   bool hasDate=Regex.IsMatch(name,@"\d{1,4}[/\.年-]\d{1,2}")||name.IndexOf("星期",StringComparison.Ordinal)>=0;
-  bool named=button&&tray&&(name=="Clock"||name.IndexOf("时钟",StringComparison.Ordinal)>=0||(hasDate&&Regex.IsMatch(name,@"\d{1,2}[:：]\d{2}")));
+  bool named=button&&tray&&(name.IndexOf("Clock",StringComparison.OrdinalIgnoreCase)>=0||name.IndexOf("时钟",StringComparison.Ordinal)>=0||(hasDate&&Regex.IsMatch(name,@"\d{1,2}[:：]\d{2}")));
   return exact||named;
  }
  private static void Add(List<Region> list,Rect r){
@@ -51,20 +53,24 @@ internal static class ClockBridge {
   list.Add(value);
  }
  private static Region[] Discover(){
-  List<Region> result=new List<Region>();
+  List<Region> result=new List<Region>(); int taskbars=0;
   EnumWindows(delegate(IntPtr hwnd,IntPtr unused){
    string cls=ClassOf(hwnd);if((cls!="Shell_TrayWnd"&&cls!="Shell_SecondaryTrayWnd")||!IsWindowVisible(hwnd))return true;
+   taskbars++; if(diagnostics){NativeRect debugRect;GetWindowRect(hwnd,out debugRect);Console.Error.WriteLine("Taskbar rect="+debugRect.Left+","+debugRect.Top+","+debugRect.Right+","+debugRect.Bottom);}
    EnumChildWindows(hwnd,delegate(IntPtr child,IntPtr ignored){if(ClassOf(child)=="TrayClockWClass"&&IsWindowVisible(child)){NativeRect r;if(GetWindowRect(child,out r))Add(result,new Rect(r.Left,r.Top,r.Right-r.Left,r.Bottom-r.Top));}return true;},IntPtr.Zero);
    try {
     AutomationElement root=AutomationElement.FromHandle(hwnd);
     AutomationElementCollection elements=root.FindAll(TreeScope.Descendants,Condition.TrueCondition);
+    if(diagnostics)Console.Error.WriteLine("Taskbar UIA elements="+elements.Count);
     foreach(AutomationElement element in elements){try{
      AutomationElement.AutomationElementInformation p=element.Current;
+     if(diagnostics&&IsClock(p.AutomationId??"",p.ClassName??"",p.Name??"",p.ControlType==ControlType.Button))Console.Error.WriteLine("UIA "+p.ClassName+" | "+p.AutomationId+" | "+(p.Name??"").Replace("\n"," ").Replace("\r"," ")+" | "+p.ControlType.ProgrammaticName+" | "+p.BoundingRectangle);
      if(!p.IsOffscreen&&IsClock(p.AutomationId??"",p.ClassName??"",p.Name??"",p.ControlType==ControlType.Button))Add(result,p.BoundingRectangle);
     }catch(ElementNotAvailableException){}catch(InvalidOperationException){} }
-   }catch(Exception){}
+   }catch(Exception error){if(diagnostics)Emit("{\"type\":\"discovery-error\",\"error\":\""+error.GetType().Name+"\"}");}
    return true;
   },IntPtr.Zero);
+  if(diagnostics)Emit("{\"type\":\"discovery\",\"taskbars\":"+taskbars+"}");
   return result.ToArray();
  }
  private static IntPtr OnMouse(int code,IntPtr message,IntPtr data){
@@ -79,11 +85,11 @@ internal static class ClockBridge {
   Console.OutputEncoding=new UTF8Encoding(false);
   try{SetProcessDpiAwarenessContext(new IntPtr(-4));}catch{}
   if(Array.IndexOf(args,"--selftest")>=0){
-   if(!IsClock("", "SystemTray.DateTimeIconContent", "",false)||!IsClock("SystemTrayIcon", "SystemTray.NormalButton", "19:35 星期五",true)||IsClock("", "Button", "音量",true)||IsClock("", "Taskbar.TaskListButton", "meeting 19:35",true))return 1;
+   if(!IsClock("SystemTrayIcon", "SystemTray.OmniButton", "时钟 9:57 \u200e2026/\u200e10/\u200e24",true)||!IsClock("", "SystemTray.DateTimeIconContent", "",false)||!IsClock("SystemTrayIcon", "SystemTray.NormalButton", "19:35 星期五",true)||IsClock("", "Button", "音量",true)||IsClock("", "Taskbar.TaskListButton", "meeting 19:35",true))return 1;
    Region r=new Region{X=-100,Y=30,Width=90,Height=45};if(!r.Contains(-50,40)||r.Contains(-10,40)||r.Contains(-101,40))return 1;
    Emit("{\"type\":\"selftest\",\"passed\":true}");return 0;
   }
-  if(Array.IndexOf(args,"--inspect")>=0){Region[] found=Discover();Emit("{\"type\":\"status\",\"count\":"+found.Length+"}");foreach(Region r in found)Emit("{\"x\":"+r.X+",\"y\":"+r.Y+",\"width\":"+r.Width+",\"height\":"+r.Height+"}");return 0;}
+  if(Array.IndexOf(args,"--inspect")>=0){diagnostics=true;Region[] found=Discover();Emit("{\"type\":\"status\",\"count\":"+found.Length+"}");foreach(Region r in found)Emit("{\"x\":"+r.X+",\"y\":"+r.Y+",\"width\":"+r.Width+",\"height\":"+r.Height+"}");return 0;}
   uint mainThread=GetCurrentThreadId();int pi=Array.IndexOf(args,"--parent");int parentId;
   if(pi<0||pi+1>=args.Length||!Int32.TryParse(args[pi+1],out parentId))return 2;
   Process parent;try{parent=Process.GetProcessById(parentId);}catch{return 2;}
@@ -93,5 +99,3 @@ internal static class ClockBridge {
   try{Application.Run();}finally{UnhookWindowsHookEx(hook);}GC.KeepAlive(callback);return 0;
  }
 }
-
-
