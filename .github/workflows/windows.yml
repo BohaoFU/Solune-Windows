@@ -1,0 +1,34 @@
+name: Windows build
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build:native
+      - run: npm test
+      - run: npm run test:app
+      - run: npm run test:startup
+      - run: npm run dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Solune-Windows-x64
+          path: release/*.exe
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Solune-Windows-preview
+          path: test-results/*.png
+          if-no-files-found: ignore
