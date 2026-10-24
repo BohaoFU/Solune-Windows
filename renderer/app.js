@@ -17,8 +17,6 @@ const clampDate = value => value<MIN?MIN:value>MAX?MAX:value;
 let today=clampDate(chinaToday()), selected=today, [viewYear,viewMonth]=dateParts(today), currentView='calendar', festivalFilter='all', conversionMode='solar';
 let toastTimer, deferredInstall, currentConvertResult;
 const dataCache=new Map(), eventCache=new Map();
-let baziOptions=SoluneBaZi.normalizeOptions();
-try{baziOptions=SoluneBaZi.normalizeOptions(JSON.parse(localStorage.getItem('solune-bazi-options')||'{}'));}catch{}
 let notes=[];
 try { const saved=JSON.parse(localStorage.getItem('suishi-notes')||'[]'); if(Array.isArray(saved))notes=saved.filter(n=>n&&typeof n.id==='string'&&isValidDate(n.date)&&typeof n.title==='string'&&n.title.length<=50&&typeof n.body==='string'&&n.body.length<=500); } catch {}
 try { if(localStorage.getItem('suishi-theme')==='dark')document.body.classList.add('dark'); }catch{}
@@ -99,28 +97,13 @@ function renderCalendar(){
   renderDetail();renderUpcoming();
 }
 
-function saveBaziOptions(next){
- baziOptions=SoluneBaZi.normalizeOptions({...baziOptions,...next});
- try{localStorage.setItem('solune-bazi-options',JSON.stringify(baziOptions));}catch{toast('八字偏好未保存，本次查看仍可使用');}
-}
-function baziDetailHTML(data){
- const e=escapeHTML;
- return `<section class="bazi-card" aria-label="四柱八字"><div class="bazi-heading"><h3>四柱八字</h3><span>日主 · ${data.dayMaster}</span></div><div class="bazi-controls"><label for="bazi-time">参考时刻 · 北京时间</label><div><input id="bazi-time" type="time" step="1" value="${baziOptions.time}" aria-label="八字参考时刻，北京时间"><button id="bazi-now" type="button">此刻</button></div><label for="bazi-sect">日柱换日</label><select id="bazi-sect" aria-label="八字日柱换日规则"><option value="2"${baziOptions.sect===2?' selected':''}>00:00 换日（晚子时算当日）</option><option value="1"${baziOptions.sect===1?' selected':''}>23:00 换日（晚子时算次日）</option></select></div><div class="bazi-pillars">${data.pillars.map(p=>`<div class="bazi-pillar"><small>${p.label}</small><strong>${p.ganzhi}</strong><span>${p.wuxing}</span></div>`).join('')}</div><p class="bazi-rule">立春换年 · 节气换月 · 未校正真太阳时</p><details class="bazi-more"${baziOptions.expanded?' open':''}><summary>纳音 · 藏干 · 十神 · 旬空</summary><div class="bazi-detail-grid">${data.pillars.map(p=>`<article><h4>${p.label} · ${p.ganzhi}</h4><dl>${[['纳音',p.nayin],['藏干',p.hidden],['天干十神',p.stemGod],['藏干十神',p.branchGod],['地势',p.stage],['旬空',p.void]].map(([k,v])=>`<div><dt>${k}</dt><dd>${e(v)}</dd></div>`).join('')}</dl></article>`).join('')}</div></details></section>`;
-}
-function bindBaziControls(){
- $('#bazi-time').onchange=e=>{if(!e.target.value){e.target.value=baziOptions.time;return;}saveBaziOptions({time:e.target.value});renderDetail();};
- $('#bazi-sect').onchange=e=>{saveBaziOptions({sect:Number(e.target.value)});renderDetail();};
- $('#bazi-now').onclick=()=>{const time=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Shanghai',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).format(new Date());saveBaziOptions({time});renderDetail();};
- $('.bazi-more').ontoggle=e=>{if(baziOptions.expanded!==e.target.open)saveBaziOptions({expanded:e.target.open});};
-}
-
 function renderDetail(){
   const [y,m,d]=dateParts(selected),{solar,lunar,festivals,term,lunarText}=getData(selected);
-  const week='星期'+solar.getWeekInChinese(),bazi=SoluneBaZi.calculate(selected,baziOptions);
+  const week='星期'+solar.getWeekInChinese(),bazi=SoluneBaZi.calculate(selected);
   const next=lunar.getNextJieQi(),nextDate=next.getSolar().toYmd();
   const ownNotes=notes.filter(n=>n.date===selected);
-  $('#day-detail').innerHTML=`<div class="day-top"><div class="day-top-date">${y}年${m}月 · ${week}${selected===today?'<span class="selected-today">今天</span>':''}</div><div class="detail-number">${pad(d)}</div><div class="detail-lunar">${lunarText}</div><div class="detail-ganzhi" id="bazi-date" aria-live="polite">${bazi.dateLine}</div></div><div class="day-bottom">${baziDetailHTML(bazi)}<div class="date-facts"><div class="fact"><small>生 肖</small><strong>${lunar.getYearShengXiao()}年</strong></div><div class="fact"><small>星 座</small><strong>${solar.getXingZuo()}座</strong></div><div class="fact"><small>农历月份</small><strong>${lunar.getMonthInChinese()}月 · ${LunarMonth.fromYm(lunar.getYear(),lunar.getMonth()).getDayCount()===30?'大':'小'}</strong></div><div class="fact"><small>岁 序</small><strong>今年第 ${dateDiff(selected,key(y,1,1))+1} 天</strong></div></div><div class="detail-event">${icon(term?'leaf':'calendar')}<span>${term?`今日节气 · ${term}`:festivals.length?festivals.join(' · '):`${next.getName()} · ${dateDiff(nextDate,selected)}天后`}</span></div>${term&&festivals.length?`<div class="detail-note-list">${escapeHTML(festivals.join(' · '))}</div>`:''}${ownNotes.length?`<div class="detail-note-list">${ownNotes.map(n=>`<button data-edit-note="${escapeHTML(n.id)}">${icon('notebook')}${escapeHTML(n.title)}</button>`).join('')}</div>`:''}<div class="add-note-button"><button id="add-day-note">${icon('plus')} 为这一天添加记事</button></div></div>`;
-  bindBaziControls();
+  $('#day-detail').innerHTML=`<div class="day-top"><div class="day-top-date">${y}年${m}月${d}日 · ${week}${selected===today?'<span class="selected-today">今天</span>':''}</div><div class="detail-number">${pad(d)}</div><div class="detail-lunar">${lunarText}</div><div class="detail-ganzhi" id="bazi-date" title="三柱按北京时间当日 12:00 确定，年柱按立春、月柱按节交接时刻计算" aria-live="polite">${bazi.dateLine}</div></div><div class="day-bottom"><div class="date-facts"><div class="fact"><small>生 肖</small><strong>${lunar.getYearShengXiao()}年</strong></div><div class="fact"><small>星 座</small><strong>${solar.getXingZuo()}座</strong></div><div class="fact"><small>农历月份</small><strong>${lunar.getMonthInChinese()}月 · ${LunarMonth.fromYm(lunar.getYear(),lunar.getMonth()).getDayCount()===30?'大':'小'}</strong></div><div class="fact"><small>岁 序</small><strong>今年第 ${dateDiff(selected,key(y,1,1))+1} 天</strong></div></div><div class="detail-event">${icon(term?'leaf':'calendar')}<span>${term?`今日节气 · ${term}`:festivals.length?festivals.join(' · '):`${next.getName()} · ${dateDiff(nextDate,selected)}天后`}</span></div>${term&&festivals.length?`<div class="detail-note-list">${escapeHTML(festivals.join(' · '))}</div>`:''}${ownNotes.length?`<div class="detail-note-list">${ownNotes.map(n=>`<button data-edit-note="${escapeHTML(n.id)}">${icon('notebook')}${escapeHTML(n.title)}</button>`).join('')}</div>`:''}<div class="add-note-button"><button id="add-day-note">${icon('plus')} 为这一天添加记事</button></div></div>`;
+  if(new URLSearchParams(location.search).has('panel'))$('#day-detail .day-bottom').remove();
   const season=lunar.getPrevJieQi().getName();
   const poem=poems[season]||poems['立秋'];
   $('#sidebar-season').innerHTML=`${branch}<div class="season-word">${season}</div><p>${escapeHTML(poem[1].replace('，','<br>')).replace('&lt;br&gt;','<br>')}</p>`;

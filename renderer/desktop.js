@@ -3,8 +3,8 @@
  const bridge=window.soluneDesktop;if(!bridge)return;
  const flyout=new URLSearchParams(location.search).has('panel');
  document.body.classList.toggle('flyout',flyout);
- const bar=document.createElement('div');bar.className='desktop-flyout-bar';bar.innerHTML='<span><img src="./icon.svg" alt="" width="27" height="27"><b>岁时</b><small>农历与日常</small></span><div><button id="open-full-app">打开 App ↗</button><button id="hide-flyout" aria-label="收起日历">×</button></div>';document.body.prepend(bar);
- $('#open-full-app').onclick=()=>bridge.openMain(selected);$('#hide-flyout').onclick=()=>bridge.hidePanel();
+ const bar=document.createElement('div');bar.className='desktop-flyout-bar';bar.innerHTML='<span><img src="./icon.svg" alt="" width="27" height="27"><b>岁时</b><small>农历与日常</small></span><div class="desktop-flyout-actions"><button id="open-full-app">打开 App ↗</button><button id="panel-add-note" class="note-icon-button" title="记一笔" aria-label="为选中日期记一笔">'+icon('notebook')+'</button><button id="hide-flyout" aria-label="收起日历">×</button></div>';document.body.prepend(bar);
+ $('#open-full-app').onclick=()=>bridge.openMain(selected);$('#panel-add-note').onclick=()=>openNote();$('#hide-flyout').onclick=()=>bridge.hidePanel();
  const settingsButton=document.createElement('button');settingsButton.className='nav-item';settingsButton.id='desktop-settings-button';settingsButton.innerHTML=icon('help')+'<span>桌面设置</span>';$('.sidebar nav').append(settingsButton);
  const settingsDialog=document.createElement('dialog');settingsDialog.id='desktop-settings';settingsDialog.innerHTML='<div class="dialog-title"><h2>桌面设置</h2><button class="icon-button" id="close-desktop-settings" aria-label="关闭设置">×</button></div><div class="desktop-setting"><label><input id="replace-clock" type="checkbox"> 点击系统时间，打开岁时农历</label><p id="clock-bridge-status" role="status"></p><p>退出岁时后，系统日历点击自动恢复。系统通知中心仍可通过 Win+N 打开。</p></div><div class="desktop-setting"><label><input id="startup-app" type="checkbox"> 开机启动（登录 Windows 后）</label><p id="startup-status" role="status"></p></div><div class="desktop-setting"><b>快捷打开</b><p>点击托盘图标，或按 Ctrl+Alt+D。</p></div><div class="desktop-setting"><b>我的记事</b><p>保存在本机 App 数据目录。导入时合并，保留本机已有的同 ID 记事。</p><div class="desktop-backup-actions"><button id="backup-notes" class="primary-button">导出备份</button><button id="restore-notes" class="today-button">导入备份</button></div></div>';document.body.append(settingsDialog);
  $('#close-desktop-settings').onclick=()=>settingsDialog.close();
@@ -22,7 +22,6 @@
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&flyout&&!$('dialog[open]'))bridge.hidePanel();});
  window.addEventListener('storage',e=>{
   if(e.key==='suishi-notes'){try{const saved=JSON.parse(e.newValue||'[]');if(Array.isArray(saved)){notes=saved.filter(n=>n&&typeof n.id==='string'&&isValidDate(n.date)&&typeof n.title==='string'&&n.title.length<=50&&typeof n.body==='string'&&n.body.length<=500);updateNoteCount();if(currentView==='notes')renderNotes();else if(currentView==='calendar')renderCalendar();}}catch{}}
-  if(e.key==='solune-bazi-options'){try{baziOptions=SoluneBaZi.normalizeOptions(JSON.parse(e.newValue||'{}'));if(currentView==='calendar')renderDetail();}catch{}}
   if(e.key==='suishi-theme'){document.body.classList.toggle('dark',e.newValue==='dark');$('#theme-btn').innerHTML=icon(e.newValue==='dark'?'sun':'moon');}
  });
  await fillSettings();

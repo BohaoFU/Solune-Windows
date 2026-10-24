@@ -31,7 +31,7 @@ function secureWindow(w){
  });
 }
 function createWindow(isPanel=false){
- const w=new BrowserWindow({width:isPanel?460:1280,height:isPanel?820:900,minWidth:isPanel?280:820,minHeight:isPanel?300:600,show:false,title:'岁时万年历 · Solune',icon:path.join(root,'assets/icon.ico'),frame:!isPanel,resizable:!isPanel,skipTaskbar:isPanel,alwaysOnTop:isPanel,backgroundColor:'#f7f7f2',autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true}});
+ const w=new BrowserWindow({width:isPanel?460:1280,height:isPanel?728:900,minWidth:isPanel?280:820,minHeight:isPanel?300:600,show:false,title:'岁时万年历 · Solune',icon:path.join(root,'assets/icon.ico'),frame:!isPanel,resizable:!isPanel,skipTaskbar:isPanel,alwaysOnTop:isPanel,backgroundColor:'#f7f7f2',autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true}});
  secureWindow(w);w.loadFile(html,{query:isPanel?{panel:'1'}:{}});
  if(isPanel)w.on('blur',()=>w.hide());else w.on('close',e=>{if(!quitting){e.preventDefault();w.hide();}});
  return w;

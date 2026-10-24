@@ -1,7 +1,7 @@
 {
   "name": "solune-windows",
   "productName": "Solune",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "岁时万年历 · Windows 农历日历与任务栏面板",
   "author": "BohaoFU",
   "private": true,

@@ -12,19 +12,13 @@ async function mainPage(){
 }
 (async()=>{try{
  app=await launch();let main=await mainPage();await main.waitForSelector('.day-cell.selected');
- await main.evaluate(()=>{localStorage.removeItem('suishi-notes');localStorage.removeItem('suishi-theme');localStorage.removeItem('solune-bazi-options');});await main.reload();await main.waitForSelector('.day-cell.selected');
+ await main.evaluate(()=>{localStorage.removeItem('suishi-notes');localStorage.removeItem('suishi-theme');localStorage.setItem('solune-bazi-options',JSON.stringify({time:'23:30:00',sect:1,expanded:true}));});await main.reload();await main.waitForSelector('.day-cell.selected');
  const errors=[];for(const p of app.windows())p.on('pageerror',e=>errors.push(e.message));
  assert.equal(await main.evaluate(()=>typeof require),'undefined');assert.equal(await main.evaluate(()=>typeof process),'undefined');
  assert.equal(await main.locator('.day-cell').count(),42);
- await main.evaluate(()=>selectDate('2005-12-23',true));await main.locator('#bazi-time').fill('08:37:00');
- await main.waitForFunction(()=>document.querySelector('#bazi-date').textContent==='乙酉年　戊子月　辛巳日');
- assert.deepEqual(await main.locator('.bazi-pillar strong').allTextContents(),['乙酉','戊子','辛巳','壬辰']);
- await main.locator('.bazi-more summary').click();assert.match(await main.locator('.bazi-detail-grid').innerText(),/泉中水/);
- await main.locator('.bazi-more summary').click();
- await main.evaluate(()=>selectDate('2026-10-24',true));await main.locator('#bazi-time').fill('23:30:00');await main.locator('#bazi-sect').selectOption('2');
- const sameDay=await main.locator('#bazi-date').innerText();await main.locator('#bazi-sect').selectOption('1');
- await main.waitForFunction(before=>document.querySelector('#bazi-date').textContent!==before,sameDay);
- await main.locator('#bazi-time').fill('08:37:00');await main.locator('#bazi-sect').selectOption('2');
+ await main.evaluate(()=>selectDate('2026-10-24',true));
+ assert.equal(await main.locator('#bazi-date').innerText(),'丙午年　戊戌月　辛未日');
+ assert.equal(await main.locator('.bazi-card,#bazi-time,#bazi-sect,.bazi-more').count(),0);
  await main.evaluate(()=>selectDate('2026-02-17',true));assert.match(await main.locator('#day-detail').innerText(),/正月初一/);
  await main.locator('[data-view="convert"]').click();await main.locator('#solar-date').fill('2023-03-22');await main.locator('#convert-form button[type="submit"]').click();assert.match(await main.locator('#convert-result').innerText(),/闰二月初一/);
  await main.locator('[data-view="calendar"]').click();await main.locator('#add-day-note').click();await main.locator('#note-title').fill('Windows 版离线验证');await main.locator('#note-body').fill('<script>这是文字，不是脚本</script>');await main.locator('#note-form button[type="submit"]').click();await main.locator('#note-dialog').waitFor({state:'hidden'});
@@ -33,9 +27,22 @@ async function mainPage(){
  assert.equal(await panel.evaluate(()=>JSON.parse(localStorage.getItem('suishi-notes')).some(n=>n.title==='Windows 版离线验证')),true);
  await app.evaluate(({BrowserWindow})=>{const p=BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().includes('panel=1'));p.show();});
  await panel.evaluate(()=>selectDate('2026-10-24',true));
- await panel.waitForFunction(()=>document.querySelector('#bazi-time').value==='08:37:00');
+ assert.equal(await panel.locator('.day-bottom,.add-note-button,.bazi-card').count(),0);
+ for(const zoom of [1,1.25,1.5]){
+  await app.evaluate(({BrowserWindow},z)=>BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().includes('panel=1')).webContents.setZoomFactor(z),zoom);
+  const clipped=await panel.evaluate(()=>[...document.querySelectorAll('.lunar-label')].filter(el=>{const box=el.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(el);const text=range.getBoundingClientRect();return text.top<box.top-.5||text.bottom>box.bottom+.5;}).map(el=>el.textContent));
+  assert.deepEqual(clipped,[],'Lunar labels should not be clipped at zoom '+zoom);
+  assert.equal(await panel.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true,'Panel should fit its width at zoom '+zoom);
+ }
+ await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().includes('panel=1')).webContents.setZoomFactor(1));
+ const leftEdges=await panel.locator('.day-top-date,.detail-lunar,#bazi-date').evaluateAll(els=>els.map(el=>el.getBoundingClientRect().x));assert.ok(Math.max(...leftEdges)-Math.min(...leftEdges)<1);
+ const noteIcon=await panel.locator('#panel-add-note').boundingBox(),openApp=await panel.locator('#open-full-app').boundingBox();assert.ok(noteIcon.x>openApp.x&&Math.abs(noteIcon.y-openApp.y)<10);
+ await panel.locator('#panel-add-note').click();await panel.locator('#note-dialog').waitFor({state:'visible'});assert.equal(await panel.locator('#note-date').inputValue(),'2026-10-24');
+ await panel.locator('#note-title').fill('顶部图标记一笔');await panel.locator('#note-form button[type="submit"]').click();await panel.locator('#note-dialog').waitFor({state:'hidden'});
+ assert.ok(await main.evaluate(()=>JSON.parse(localStorage.getItem('suishi-notes')).some(n=>n.date==='2026-10-24'&&n.title==='顶部图标记一笔')));
  assert.equal(await panel.locator('#bazi-date').innerText(),'丙午年　戊戌月　辛未日');
  const dateBounds=await panel.locator('#bazi-date').boundingBox();assert.ok(dateBounds.y+dateBounds.height<await panel.evaluate(()=>innerHeight));
+ await panel.waitForFunction(()=>!document.querySelector('#toast').classList.contains('show'));
  await panel.screenshot({animations:'disabled',path:path.join(screenshotDir,'Solune-panel.png')});
  await panel.locator('#open-full-app').click();await main.locator('#desktop-settings-button').click();await main.locator('#replace-clock').check();await main.locator('#replace-clock').uncheck();assert.equal((await main.evaluate(()=>soluneDesktop.getSettings())).replaceClock,false);await main.locator('#startup-app').check();assert.equal((await main.evaluate(()=>soluneDesktop.getSettings())).startup,true);
  await main.locator('#close-desktop-settings').click();assert.equal(await main.locator('#startup-quick').isChecked(),true);
@@ -51,8 +58,7 @@ async function mainPage(){
  assert.deepEqual(errors,[]);await app.close();app=null;
  app=await launch();main=await mainPage();await main.waitForSelector('.day-cell.selected');assert.ok(await main.evaluate(()=>JSON.parse(localStorage.getItem('suishi-notes')).some(n=>n.title==='Windows 版离线验证')));assert.equal((await main.evaluate(()=>soluneDesktop.getSettings())).replaceClock,false);
  assert.equal((await main.evaluate(()=>soluneDesktop.getSettings())).startup,true);assert.equal(await main.locator('#startup-quick').isChecked(),true);
- assert.equal(await main.locator('#bazi-time').inputValue(),'08:37:00');assert.equal(await main.locator('#bazi-sect').inputValue(),'2');
  await main.locator('#startup-quick').uncheck();await app.close();app=null;
  app=await launch();main=await mainPage();await main.waitForSelector('.day-cell.selected');assert.equal((await main.evaluate(()=>soluneDesktop.getSettings())).startup,false);
- console.log('PASS: four pillars, late Zi rule, synchronized and persistent time preference, startup on/off persistence, lunar calendar, leap month conversion, notes persistence and cross-window sync, desktop settings persistence, sandbox isolation, offline network policy, screenshots.');
+ console.log('PASS: left-aligned date card, removed BaZi controls, header note action, unclipped lunar labels at 100/125/150 percent zoom, startup on/off persistence, lunar calendar, leap month conversion, notes persistence and cross-window sync, desktop settings persistence, sandbox isolation, offline network policy, screenshots.');
  }finally{if(app)await app.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
