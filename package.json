@@ -1,7 +1,7 @@
 {
   "name": "solune-windows",
   "productName": "Solune",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "岁时万年历 · Windows 农历日历与任务栏面板",
   "author": "BohaoFU",
   "private": true,
@@ -13,7 +13,9 @@
     "test:app": "node tests/app-smoke.cjs",
     "dist": "npm run build:native && electron-builder --win nsis portable --x64 --publish never",
     "pack": "npm run build:native && electron-builder --win --dir --x64 --publish never",
-    "test:clock": "node tests/clock-smoke.cjs"
+    "test:clock": "node tests/clock-smoke.cjs",
+    "build:icons": "electron scripts/build-icons.cjs",
+    "test:startup": "electron tests/startup-os-smoke.cjs"
   },
   "build": {
     "appId": "cn.suishi.calendar.windows",

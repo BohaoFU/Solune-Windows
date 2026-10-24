@@ -4,7 +4,9 @@
 
 Windows 10/11 x64 desktop lunar calendar, reusing the local assets from [Solune-Web](https://github.com/BohaoFU/Solune-Web). Includes Gregorian/lunar month views, leap-month conversion, solar terms, festivals, local notes, a tray flyout, JSON backup/merge import, and optional native clock-click routing.
 
-Click the tray icon or press **Ctrl+Alt+D** to toggle the panel. Closing the main window keeps the app in the tray; choose Exit from the tray menu to quit. Clock routing only runs while Solune is running, never changes Windows files or registry settings, and falls back to the tray when a clock cannot be identified. Windows notification center remains available via Win+N. Startup is opt-in.
+Click the tray icon or press **Ctrl+Alt+D** to toggle the panel. Closing the main window keeps the app in the tray; choose Exit from the tray menu to quit. Clock routing only runs while Solune is running, never changes Windows files or registry settings, and falls back to the tray when a clock cannot be identified. Windows notification center remains available via Win+N. Startup is enabled on the first packaged launch and can be disabled in desktop settings or the sidebar; a saved opt-out is preserved.
+
+The selected date displays prominent GanZhi year/month/day text, with a four-pillar panel, editable Beijing reference time, 00:00/23:00 day boundaries, five elements, NaYin, hidden stems and Ten Gods. Year/month pillars use exact solar-term instants; no true-solar-time correction is applied. Time preferences sync between windows and survive restarts. The Windows executable, shortcuts, tray and in-app brand use a plum blossom icon.
 
 All calendar assets are bundled. No Google fonts, remote scripts, accounts, advertisements or telemetry are loaded. Dates use Asia/Shanghai, with a Gregorian range of 1901–2100. Festival markers are not official public-holiday or makeup-workday schedules. Local notes survive restarts and app updates; export JSON before migrating to another computer.
 

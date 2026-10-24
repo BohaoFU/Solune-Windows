@@ -2,20 +2,23 @@
 const {app,BrowserWindow,Menu,Tray,nativeImage,ipcMain,screen,globalShortcut,session,dialog,shell}=require('electron');
 const fs=require('node:fs'),path=require('node:path'),{pathToFileURL}=require('node:url'),{spawn}=require('node:child_process'),readline=require('node:readline');
 const {panelBounds}=require('./panel-position.cjs');
+const {loginCommand,setStartup,initializeStartup}=require('./startup.cjs');
 const root=path.resolve(__dirname,'..'),html=path.join(root,'renderer/index.html'),pageUrl=pathToFileURL(html).href;
 const clockTesting=process.argv.includes('--clock-test');
 const testing=process.argv.includes('--smoke-test')||clockTesting;
 if(testing)app.setPath('userData',path.resolve(process.env.SOLUNE_TEST_DATA||path.join(root,'.test-data')));
 let main,panel,tray,bridge,quitting=false,status='正在识别系统时钟…',settingsPath,lastToggle=0;
-let preferences={replaceClock:true};
-function startupCommand(){return {path:process.env.PORTABLE_EXECUTABLE_FILE||app.getPath('exe'),args:['--background']};}
-function getSettings(){return {...preferences,startup:app.getLoginItemSettings(startupCommand()).openAtLogin,status,shortcut:'Ctrl+Alt+D'};}
+let preferences={replaceClock:true},startupError='';
+function savePreferences(){fs.mkdirSync(path.dirname(settingsPath),{recursive:true});fs.writeFileSync(settingsPath+'.tmp',JSON.stringify(preferences));fs.renameSync(settingsPath+'.tmp',settingsPath);}
+function startupCommand(){return loginCommand(app,process.env.PORTABLE_EXECUTABLE_FILE);}
+function startupEnabled(){return testing?preferences.startup===true:app.getLoginItemSettings(startupCommand()).openAtLogin;}
+function getSettings(){return {...preferences,startup:startupEnabled(),startupError,status,shortcut:'Ctrl+Alt+D'};}
 function rebuildMenu(){if(!tray)return;tray.setContextMenu(Menu.buildFromTemplate([
  {label:'打开岁时万年历',click:()=>showMain()},
  {label:'农历小面板 · Ctrl+Alt+D',click:()=>togglePanel(null,true)},
  {type:'separator'},{label:status,enabled:false},
  {label:'接管系统时间的左键点击',type:'checkbox',checked:preferences.replaceClock,click:item=>changeSetting('replaceClock',item.checked)},
- {label:'开机启动',type:'checkbox',checked:app.getLoginItemSettings(startupCommand()).openAtLogin,click:item=>changeSetting('startup',item.checked)},
+ {label:'开机启动',type:'checkbox',checked:startupEnabled(),click:item=>changeSetting('startup',item.checked)},
  {type:'separator'},{label:'退出（恢复系统日历点击）',click:()=>{quitting=true;app.quit();}}
 ]));}
 function updateStatus(value){status=value;for(const w of [main,panel])if(w&&!w.isDestroyed())w.webContents.send('desktop:status',status);rebuildMenu();}
@@ -28,7 +31,7 @@ function secureWindow(w){
  });
 }
 function createWindow(isPanel=false){
- const w=new BrowserWindow({width:isPanel?460:1280,height:isPanel?680:900,minWidth:isPanel?280:820,minHeight:isPanel?300:600,show:false,title:'岁时万年历 · Solune',icon:path.join(root,'assets/icon.ico'),frame:!isPanel,resizable:!isPanel,skipTaskbar:isPanel,alwaysOnTop:isPanel,backgroundColor:'#f7f7f2',autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true}});
+ const w=new BrowserWindow({width:isPanel?460:1280,height:isPanel?820:900,minWidth:isPanel?280:820,minHeight:isPanel?300:600,show:false,title:'岁时万年历 · Solune',icon:path.join(root,'assets/icon.ico'),frame:!isPanel,resizable:!isPanel,skipTaskbar:isPanel,alwaysOnTop:isPanel,backgroundColor:'#f7f7f2',autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true}});
  secureWindow(w);w.loadFile(html,{query:isPanel?{panel:'1'}:{}});
  if(isPanel)w.on('blur',()=>w.hide());else w.on('close',e=>{if(!quitting){e.preventDefault();w.hide();}});
  return w;
@@ -61,9 +64,9 @@ function startBridge(){
 function changeSetting(key,value){
  if(typeof value!=='boolean'||!['replaceClock','startup'].includes(key))throw Error('设置无效');
  if(key==='startup'){
-  if(!testing)app.setLoginItemSettings({...startupCommand(),openAtLogin:value});
+  setStartup(app,preferences,startupCommand(),value,testing);startupError='';savePreferences();
  }else{
-  preferences.replaceClock=value;fs.mkdirSync(path.dirname(settingsPath),{recursive:true});fs.writeFileSync(settingsPath+'.tmp',JSON.stringify(preferences));fs.renameSync(settingsPath+'.tmp',settingsPath);if(!testing||clockTesting)startBridge();
+  preferences.replaceClock=value;savePreferences();if(!testing||clockTesting)startBridge();
  }
  rebuildMenu();return getSettings();
 }
@@ -82,7 +85,8 @@ function handlers(){
 if(!app.requestSingleInstanceLock())app.quit();else{
  app.on('second-instance',(_e,args)=>args.includes('--panel')?togglePanel(null,true):showMain());
  app.whenReady().then(()=>{
-  app.setAppUserModelId('cn.suishi.calendar.windows');settingsPath=path.join(app.getPath('userData'),'desktop-settings.json');try{const p=JSON.parse(fs.readFileSync(settingsPath,'utf8'));if(typeof p.replaceClock==='boolean')preferences.replaceClock=p.replaceClock;}catch{}
+  app.setAppUserModelId('cn.suishi.calendar.windows');settingsPath=path.join(app.getPath('userData'),'desktop-settings.json');try{const p=JSON.parse(fs.readFileSync(settingsPath,'utf8'));if(typeof p.replaceClock==='boolean')preferences.replaceClock=p.replaceClock;if(typeof p.startup==='boolean')preferences.startup=p.startup;}catch{}
+  try{if(initializeStartup(app,preferences,startupCommand(),testing))savePreferences();}catch(e){startupError=e.message;}
   session.defaultSession.setPermissionRequestHandler((_w,_p,cb)=>cb(false));
   session.defaultSession.webRequest.onBeforeRequest((d,cb)=>cb({cancel:!['file:','data:','devtools:'].some(p=>d.url.startsWith(p))}));
   Menu.setApplicationMenu(null);main=createWindow();panel=createWindow(true);tray=new Tray(nativeImage.createFromPath(path.join(root,'assets/icon.ico')));tray.setToolTip('岁时万年历 · 点击查看农历');tray.on('click',()=>togglePanel());handlers();rebuildMenu();
