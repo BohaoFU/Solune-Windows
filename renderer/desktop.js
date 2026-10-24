@@ -3,6 +3,7 @@
  const bridge=window.soluneDesktop;if(!bridge)return;
  const flyout=new URLSearchParams(location.search).has('panel');
  document.body.classList.toggle('flyout',flyout);
+ if(flyout)$('.calendar-layout').prepend($('#day-detail'));
  const bar=document.createElement('div');bar.className='desktop-flyout-bar';bar.innerHTML='<span><img src="./icon.svg" alt="" width="27" height="27"><b>岁时</b><small>农历与日常</small></span><div class="desktop-flyout-actions"><button id="open-full-app">打开 App ↗</button><button id="panel-add-note" class="note-icon-button" title="记一笔" aria-label="为选中日期记一笔">'+icon('notebook')+'</button><button id="hide-flyout" aria-label="收起日历">×</button></div>';document.body.prepend(bar);
  $('#open-full-app').onclick=()=>bridge.openMain(selected);$('#panel-add-note').onclick=()=>openNote();$('#hide-flyout').onclick=()=>bridge.hidePanel();
  const settingsButton=document.createElement('button');settingsButton.className='nav-item';settingsButton.id='desktop-settings-button';settingsButton.innerHTML=icon('help')+'<span>桌面设置</span>';$('.sidebar nav').append(settingsButton);

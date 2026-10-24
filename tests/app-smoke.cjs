@@ -28,6 +28,8 @@ async function mainPage(){
  await app.evaluate(({BrowserWindow})=>{const p=BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().includes('panel=1'));p.show();});
  await panel.evaluate(()=>selectDate('2026-10-24',true));
  assert.equal(await panel.locator('.day-bottom,.add-note-button,.bazi-card').count(),0);
+ const card=await panel.locator('#day-detail').boundingBox(),calendar=await panel.locator('.calendar-card').boundingBox();assert.ok(card.y+card.height<=calendar.y,'Date card should appear above the month grid');
+ assert.equal(await panel.locator('.calendar-layout > :first-child').getAttribute('id'),'day-detail');
  for(const zoom of [1,1.25,1.5]){
   await app.evaluate(({BrowserWindow},z)=>BrowserWindow.getAllWindows().find(w=>w.webContents.getURL().includes('panel=1')).webContents.setZoomFactor(z),zoom);
   const clipped=await panel.evaluate(()=>[...document.querySelectorAll('.lunar-label')].filter(el=>{const box=el.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(el);const text=range.getBoundingClientRect();return text.top<box.top-.5||text.bottom>box.bottom+.5;}).map(el=>el.textContent));
